@@ -1,6 +1,60 @@
 class IssuesController < ApplicationController
   before_action :set_issue, only: [:show, :edit, :update, :destroy]
 
+  def filter_display
+
+    params[:repo_id]
+    params[:severity]
+    params[:date_order]
+    params[:source]
+
+    @last_scan = Scan.where(repo_id: params[:repo_id]).last
+    @repository = Repository.find(params[:repo_id])
+    optional_queries_and_params = []
+
+    # Pull out all possible sources
+    last_scan_source = @last_scan.sources.distict(true)
+    @source_array = []
+    last_scan_sources.each do |last_scan_source|
+        @soure_array.push(last_scan_source.source)
+    end
+
+    # Set up first line of final query array
+    final_query_array = [
+        "SELECT * FROM issues WHERE scan_id = last_scan.id",
+    ]
+
+    # Check for optional params
+    
+    # Severity filter
+    if params[:severity].present? and ["High","Medium","Low"].include?(params[:severity])
+        query = "AND severity = ?"
+        optional_queries_and_params.push([query, params[:severity]])
+    end
+    # Date order
+    if params[:date_order].present?
+      asc_or_desc = DATE_ORDER_MAP[params[:date_order]]
+      query = "ORDER BY issues.created_at ?"
+      optional_queries_and_params.push([query, asc_or_desc])
+    end
+
+    # Source filter
+    if params[:source].present?
+      query = "AND source = ?"
+      optional_queries_and_params.push([query, params[:source]])
+    end
+
+    # Add all optional queries and params to final query
+    optional_queries_and_params.each do |query, param|
+      final_query_array.push(query)
+      final_params.push(param)
+    end
+
+    final_query = final_query_array.join(" ")
+    @issues = Issue.find_by_sql [final_query, *final_params]
+
+  end
+
   # GET /issues
   # GET /issues.json
   def index
