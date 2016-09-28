@@ -19,8 +19,6 @@ class ReposController < ApplicationController
       final_query = final_query_array.join(" ")
       @issues = Issue.find_by_sql [final_query, *final_params]
     end
-    
-    
   end
 
   # GET /repos/new
